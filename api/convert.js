@@ -17,9 +17,11 @@ module.exports = async function handler(req, res) {
       uploadDir: os.tmpdir(),
       keepExtensions: true,
       maxFileSize: 30 * 1024 * 1024,
-      filter: ({ originalFilename }) => {
+      filter: ({ originalFilename, mimetype }) => {
         const ext = path.extname(originalFilename || "").toLowerCase();
-        return [".hwp", ".hwpx", ".pdf"].includes(ext);
+        if ([".hwp", ".hwpx", ".pdf"].includes(ext)) return true;
+        if ((mimetype || "").toLowerCase() === "application/pdf") return true;
+        return false;
       },
     };
 
