@@ -6,13 +6,13 @@
     <title>진정서 자동 변환기</title>
     <style>
       :root {
-        --bg1: #f3f8ff;
-        --bg2: #e7f1ff;
-        --ink: #1f2937;
-        --muted: #607086;
-        --line: #c8d6ee;
-        --accent: #0b66ff;
-        --accent2: #0049c7;
+        --bg1: #f3f7fc;
+        --bg2: #e8eef8;
+        --ink: #1a2b44;
+        --muted: #5f6f86;
+        --line: #c4d2e8;
+        --accent: #003c87;
+        --accent2: #c63d3d;
         --ok: #0f8b5b;
         --warn: #b24a13;
       }
@@ -23,8 +23,8 @@
         color: var(--ink);
         min-height: 100vh;
         background:
-          radial-gradient(circle at 14% 20%, #dceaff 0%, transparent 36%),
-          radial-gradient(circle at 88% 84%, #d9f4ea 0%, transparent 28%),
+          radial-gradient(circle at 14% 20%, #d9e6fb 0%, transparent 36%),
+          radial-gradient(circle at 88% 84%, #f4dddd 0%, transparent 28%),
           linear-gradient(160deg, var(--bg1), var(--bg2));
       }
       .wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
@@ -62,7 +62,10 @@
         font-size: 1rem;
         font-weight: 700;
         cursor: pointer;
-        background: linear-gradient(180deg, var(--accent), var(--accent2));
+        background: linear-gradient(180deg, var(--accent), #002f6b);
+      }
+      button:hover:not(:disabled) {
+        background: linear-gradient(180deg, #0a4ca1, var(--accent2));
       }
       button:disabled { opacity: .72; cursor: wait; }
       .status { margin-top: 12px; min-height: 22px; font-weight: 600; }
@@ -83,7 +86,7 @@
     <main class="wrap">
       <section class="card">
         <h1>진정서 자동 변환기</h1>
-        <p class="desc">HWP/HWPX/PDF 파일을 업로드하면 XLSX(진정인/피진정인/진정요지 3시트)로 변환합니다.</p>
+        <p class="desc">진정서 파일(HWP, HWPX, PDF)를 넣으면 내용을 엑셀(XLSX)로 바꿔줘요!</p>
 
         <form id="upload-form">
           <label class="dropzone" id="dropzone" for="file-input">
