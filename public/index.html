@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>진정서 변환기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <p class="eyebrow">HWP / HWPX / PDF</p>
+        <h1>진정서 자동 변환기</h1>
+        <p class="desc">
+          파일을 올리면 <strong>진정인 / 피진정인 / 진정요지</strong> 3개 시트가 포함된 XLSX를 생성합니다.
+        </p>
+
+        <form id="upload-form">
+          <label id="dropzone" class="dropzone" for="file-input">
+            <input id="file-input" name="document" type="file" accept=".hwp,.hwpx,.pdf" required />
+            <span id="file-label">파일을 드래그하거나 클릭해서 선택하세요</span>
+            <small>지원 형식: .hwp, .hwpx, .pdf (최대 30MB)</small>
+          </label>
+          <button id="submit-btn" type="submit">엑셀로 변환</button>
+        </form>
+
+        <p id="status" class="status"></p>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+  </html>

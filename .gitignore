@@ -1,0 +1,7 @@
+﻿node_modules/
+tmp/
+*.log
+*_extracted.txt
+*_정리.xlsx
+web_test_output.xlsx
+zNex~$*

@@ -1,0 +1,17 @@
+{
+  "name": "hackathon-work",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "convert": "node src/index.js",
+    "web": "node src/server.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "cfb": "^1.2.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
+  }
+}

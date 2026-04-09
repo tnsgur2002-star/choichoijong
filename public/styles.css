@@ -1,0 +1,143 @@
+:root {
+  --bg1: #f3f8ff;
+  --bg2: #e6f0ff;
+  --ink: #1f2937;
+  --muted: #5b6475;
+  --line: #c8d6ee;
+  --accent: #0b66ff;
+  --accent-strong: #0049c7;
+  --ok: #0b875b;
+  --warn: #b24a13;
+  --card: #ffffffee;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "SUIT", "Malgun Gothic", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 20%, #d6e8ff 0%, transparent 38%),
+    radial-gradient(circle at 88% 80%, #d4f3eb 0%, transparent 32%),
+    linear-gradient(160deg, var(--bg1), var(--bg2));
+  min-height: 100vh;
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card {
+  width: min(720px, 100%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow:
+    0 14px 40px rgba(31, 41, 55, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  padding: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+}
+
+.desc {
+  margin: 14px 0 20px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.dropzone {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  background: #f9fcff;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: #eef5ff;
+  transform: translateY(-1px);
+}
+
+.dropzone input[type="file"] {
+  display: none;
+}
+
+.dropzone span {
+  font-weight: 700;
+}
+
+.dropzone small {
+  color: var(--muted);
+}
+
+button {
+  margin-top: 14px;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  padding: 13px 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.status {
+  min-height: 24px;
+  margin: 14px 0 0;
+  font-weight: 500;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.warn {
+  color: var(--warn);
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .dropzone {
+    padding: 18px;
+  }
+}
