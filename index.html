@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>진정서 변환기</title>
+    <style>
+      :root {
+        --bg1: #f3f8ff;
+        --bg2: #e7f1ff;
+        --ink: #1f2937;
+        --muted: #607086;
+        --line: #c8d6ee;
+        --accent: #0b66ff;
+        --accent2: #0049c7;
+        --ok: #0f8b5b;
+        --warn: #b24a13;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Malgun Gothic", sans-serif;
+        color: var(--ink);
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 14% 20%, #dceaff 0%, transparent 36%),
+          radial-gradient(circle at 88% 84%, #d9f4ea 0%, transparent 28%),
+          linear-gradient(160deg, var(--bg1), var(--bg2));
+      }
+      .wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+      .card {
+        width: min(760px, 100%);
+        background: #fffffff2;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 10px 36px rgba(31, 41, 55, 0.12);
+        padding: 26px;
+      }
+      h1 { margin: 0 0 10px; font-size: clamp(1.5rem, 2.7vw, 2.2rem); }
+      p { margin: 0; line-height: 1.55; }
+      .desc { color: var(--muted); margin-bottom: 16px; }
+      .dropzone {
+        display: grid;
+        gap: 7px;
+        border: 2px dashed var(--line);
+        border-radius: 14px;
+        padding: 22px;
+        background: #f7fbff;
+        cursor: pointer;
+      }
+      .dropzone.dragging { border-color: var(--accent); background: #eef5ff; }
+      .dropzone input { display: none; }
+      .dropzone .title { font-weight: 700; }
+      .dropzone .hint { color: var(--muted); font-size: 0.93rem; }
+      button {
+        margin-top: 12px;
+        width: 100%;
+        border: 0;
+        border-radius: 11px;
+        color: white;
+        padding: 13px 16px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        background: linear-gradient(180deg, var(--accent), var(--accent2));
+      }
+      button:disabled { opacity: .72; cursor: wait; }
+      .status { margin-top: 12px; min-height: 22px; font-weight: 600; }
+      .ok { color: var(--ok); }
+      .warn { color: var(--warn); }
+      .tip { margin-top: 6px; font-size: .9rem; color: var(--muted); }
+      code { background: #edf3ff; padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>진정서 자동 변환기</h1>
+        <p class="desc">HWP/HWPX/PDF 파일을 업로드하면 XLSX(진정인/피진정인/진정요지 3시트)로 변환합니다.</p>
+
+        <form id="upload-form">
+          <label class="dropzone" id="dropzone" for="file-input">
+            <input id="file-input" type="file" name="document" accept=".hwp,.hwpx,.pdf" />
+            <span id="file-label" class="title">파일을 드래그하거나 클릭해서 선택하세요</span>
+            <span class="hint">지원 형식: .hwp, .hwpx, .pdf (최대 30MB)</span>
+          </label>
+          <button id="submit-btn" type="submit">엑셀로 변환</button>
+        </form>
+
+        <p id="status" class="status"></p>
+        <p class="tip">서버는 <code>npm run web</code> 실행 후 <code>http://localhost:3000</code> 에서 사용하세요.</p>
+      </section>
+    </main>
+
+    <script>
+      const API_URL = "http://localhost:3000/api/convert";
+      const form = document.getElementById("upload-form");
+      const input = document.getElementById("file-input");
+      const dropzone = document.getElementById("dropzone");
+      const fileLabel = document.getElementById("file-label");
+      const statusEl = document.getElementById("status");
+      const submitBtn = document.getElementById("submit-btn");
+
+      function setStatus(msg, type = "") {
+        statusEl.textContent = msg;
+        statusEl.className = `status ${type}`.trim();
+      }
+
+      function setFileLabel(file) {
+        if (!file) {
+          fileLabel.textContent = "파일을 드래그하거나 클릭해서 선택하세요";
+          return;
+        }
+        fileLabel.textContent = `${file.name} (${Math.ceil(file.size / 1024)}KB)`;
+      }
+
+      input.addEventListener("change", () => setFileLabel(input.files[0]));
+
+      dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragging");
+      });
+
+      dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("dragging");
+      });
+
+      dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragging");
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        setFileLabel(file);
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const file = input.files?.[0];
+        if (!file) {
+          setStatus("파일을 먼저 선택해주세요.", "warn");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        setStatus("변환 중입니다. 잠시만 기다려주세요...");
+
+        try {
+          const fd = new FormData();
+          fd.append("document", file);
+
+          const res = await fetch(API_URL, { method: "POST", body: fd });
+          if (!res.ok) {
+            let msg = "변환에 실패했습니다.";
+            try {
+              const err = await res.json();
+              if (err?.message) msg = err.message;
+            } catch {}
+            throw new Error(msg);
+          }
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${file.name.replace(/\.[^.]+$/, "")}_정리.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          setStatus("변환 완료. 다운로드를 시작했습니다.", "ok");
+        } catch (err) {
+          setStatus(err.message || "요청 중 오류가 발생했습니다.", "warn");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

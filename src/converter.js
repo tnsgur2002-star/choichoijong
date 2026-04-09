@@ -129,6 +129,20 @@ function cleanText(text) {
     .trim();
 }
 
+function buildClaimSummary(details) {
+  const v = (x) => {
+    const s = String(x || "").trim();
+    return s ? s : "미기재";
+  };
+
+  return [
+    `진정인은 ${v(details.joinDate)}에 입사하여 ${v(details.leaveDate)}에 퇴사(또는 퇴사 예정)하였다고 진술하고 있습니다.`,
+    `체불 금품 내역은 체불임금총액 ${v(details.unpaidWageTotal)}, 체불퇴직금총액 ${v(details.unpaidRetirementTotal)}, 기타체불금액 ${v(details.otherUnpaidTotal)}으로 기재되어 있습니다.`,
+    `업무내용은 ${v(details.jobDescription)}이며, 임금지급일은 ${v(details.payday)}로 작성되어 있습니다.`,
+    `진정 상세 내용은 다음과 같습니다: ${v(details.detailContent)}`,
+  ].join("\n");
+}
+
 function extractStructuredData(fullText) {
   const text = cleanText(fullText);
   const complainantSection = sectionRange(text, /1\.\s*진정인/, /2\.\s*피진정인/);
@@ -158,14 +172,18 @@ function extractStructuredData(fullText) {
     "근로자 수": getField(respondentMap, ["근로자 수"]),
   };
 
-  const claimSummary =
-    getField(claimMap, ["내용", "내 용"]) ||
-    [
-      "이 문서는 근로 관련 진정을 접수하기 위한 양식으로,",
-      "입사일·퇴사일, 체불임금총액·체불퇴직금액·기타체불금액,",
-      "업무 내용, 임금 지급일, 근로계약방법(서면/구두), 퇴직 여부 등을 기재하여",
-      "피진정인에 대한 임금 및 금품 체불 관련 사실을 신고하도록 구성되어 있습니다.",
-    ].join(" ");
+  const claimDetails = {
+    joinDate: getField(claimMap, ["입사일", "입 사 일"]),
+    leaveDate: getField(claimMap, ["퇴사일", "퇴 사 일"]),
+    unpaidWageTotal: getField(claimMap, ["체불임금총액"]),
+    unpaidRetirementTotal: getField(claimMap, ["체불퇴직금총액", "체불퇴직금액"]),
+    otherUnpaidTotal: getField(claimMap, ["기타체불금액"]),
+    jobDescription: getField(claimMap, ["업무내용", "업 무 내 용"]),
+    payday: getField(claimMap, ["임금지급일", "임금 지급일"]),
+    detailContent: getField(claimMap, ["내용", "내 용"]),
+  };
+
+  const claimSummary = buildClaimSummary(claimDetails);
 
   return {
     complainant,
