@@ -115,14 +115,9 @@ function parseHwpxText(filePath) {
 
 async function parsePdfText(filePath) {
   const raw = fs.readFileSync(filePath);
-  const { PDFParse } = require("pdf-parse");
-  const parser = new PDFParse({ data: raw });
-  try {
-    const result = await parser.getText();
-    return String(result?.text || "");
-  } finally {
-    await parser.destroy();
-  }
+  const pdfParse = require("pdf-parse");
+  const result = await pdfParse(raw);
+  return String(result?.text || "");
 }
 
 function cleanText(text) {
