@@ -44,6 +44,14 @@ http://localhost:3000
 
 웹에서는 파일 업로드 후 자동으로 변환된 XLSX 다운로드가 시작됩니다.
 
+## Vercel 배포
+
+- 루트 페이지: `index.html`
+- 서버리스 API: `api/convert.js`
+- 배포 설정: `vercel.json`
+
+Vercel에서 이 저장소를 Import하면 `/api/convert` 함수와 정적 페이지가 함께 배포됩니다.
+
 ## 참고
 
 - `.hwp`는 `PrvText` 기반으로 추출합니다. 문서 구조에 따라 일부 값이 비어 있을 수 있습니다.

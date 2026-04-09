@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>진정서 변환기</title>
+    <title>진정서 자동 변환기</title>
     <style>
       :root {
         --bg1: #f3f8ff;
@@ -68,8 +68,6 @@
       .status { margin-top: 12px; min-height: 22px; font-weight: 600; }
       .ok { color: var(--ok); }
       .warn { color: var(--warn); }
-      .tip { margin-top: 6px; font-size: .9rem; color: var(--muted); }
-      code { background: #edf3ff; padding: 2px 6px; border-radius: 6px; }
     </style>
   </head>
   <body>
@@ -88,12 +86,11 @@
         </form>
 
         <p id="status" class="status"></p>
-        <p class="tip">서버는 <code>npm run web</code> 실행 후 <code>http://localhost:3000</code> 에서 사용하세요.</p>
       </section>
     </main>
 
     <script>
-      const API_URL = "http://localhost:3000/api/convert";
+      const API_URL = "/api/convert";
       const form = document.getElementById("upload-form");
       const input = document.getElementById("file-input");
       const dropzone = document.getElementById("dropzone");
@@ -115,16 +112,8 @@
       }
 
       input.addEventListener("change", () => setFileLabel(input.files[0]));
-
-      dropzone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropzone.classList.add("dragging");
-      });
-
-      dropzone.addEventListener("dragleave", () => {
-        dropzone.classList.remove("dragging");
-      });
-
+      dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragging"); });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragging"));
       dropzone.addEventListener("drop", (e) => {
         e.preventDefault();
         dropzone.classList.remove("dragging");
@@ -139,18 +128,13 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const file = input.files?.[0];
-        if (!file) {
-          setStatus("파일을 먼저 선택해주세요.", "warn");
-          return;
-        }
+        if (!file) return setStatus("파일을 먼저 선택해주세요.", "warn");
 
         submitBtn.disabled = true;
         setStatus("변환 중입니다. 잠시만 기다려주세요...");
-
         try {
           const fd = new FormData();
           fd.append("document", file);
-
           const res = await fetch(API_URL, { method: "POST", body: fd });
           if (!res.ok) {
             let msg = "변환에 실패했습니다.";
@@ -162,10 +146,13 @@
           }
 
           const blob = await res.blob();
+          const disposition = res.headers.get("Content-Disposition") || "";
+          const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i);
+          const rawName = decodeURIComponent((match && (match[1] || match[2])) || `${file.name.replace(/\.[^.]+$/, "")}_정리.xlsx`);
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
-          a.download = `${file.name.replace(/\.[^.]+$/, "")}_정리.xlsx`;
+          a.download = rawName;
           document.body.appendChild(a);
           a.click();
           a.remove();
