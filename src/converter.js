@@ -210,7 +210,6 @@ function buildClaimSummary(details) {
     `진정인은 ${v(details.joinDate)}에 입사하여 ${v(details.leaveDate)}에 퇴사(또는 퇴사 예정)하였다고 진술하고 있습니다.`,
     `체불 금품 내역은 체불임금총액 ${v(details.unpaidWageTotal)}, 체불퇴직금총액 ${v(details.unpaidRetirementTotal)}, 기타체불금액 ${v(details.otherUnpaidTotal)}으로 기재되어 있습니다.`,
     `업무내용은 ${v(details.jobDescription)}이며, 임금지급일은 ${v(details.payday)}로 작성되어 있습니다.`,
-    `진정 상세 내용은 다음과 같습니다: ${v(details.detailContent)}`,
   ].join("\n");
 }
 

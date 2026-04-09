@@ -68,6 +68,15 @@
       .status { margin-top: 12px; min-height: 22px; font-weight: 600; }
       .ok { color: var(--ok); }
       .warn { color: var(--warn); }
+      .notice {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.65;
+      }
+      .notice strong { color: #3b4f6c; }
     </style>
   </head>
   <body>
@@ -86,6 +95,12 @@
         </form>
 
         <p id="status" class="status"></p>
+        <div class="notice">
+          <p><strong>안내사항</strong></p>
+          <p>본 서비스는 민원 작성 편의를 위한 참고용 자동 정리 도구입니다.</p>
+          <p>제출 전 신청인께서는 변환 결과의 사실관계 및 기재사항을 최종 확인하여 주시기 바랍니다.</p>
+          <p>입력된 자료는 변환 처리 목적 외로 활용되지 않으며, 처리 완료 후 즉시 폐기됩니다.</p>
+        </div>
       </section>
     </main>
 
