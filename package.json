@@ -2,6 +2,9 @@
   "name": "hackathon-work",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "convert": "node src/index.js",
     "web": "node src/server.js"

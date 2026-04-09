@@ -1,11 +1,12 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const formidableLib = require("formidable");
-const { convertFile } = require("../src/converter");
 
 module.exports = async function handler(req, res) {
   try {
+    const formidableLib = require("formidable");
+    const { convertFile } = require("../src/converter");
+
     if (req.method !== "POST") {
       res.status(405).json({ message: "Method Not Allowed" });
       return;
