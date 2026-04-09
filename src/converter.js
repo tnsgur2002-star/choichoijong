@@ -63,6 +63,14 @@ function escapeRegExp(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function looseLabelPattern(label) {
+  const compact = String(label || "").replace(/\s+/g, "");
+  return compact
+    .split("")
+    .map((ch) => escapeRegExp(ch))
+    .join("\\s*");
+}
+
 function compactText(text) {
   return String(text || "")
     .replace(/\r/g, "\n")
@@ -104,6 +112,22 @@ function getFieldWithFallback(sectionMap, aliases, sectionText, allAliases) {
   const fromMap = getField(sectionMap, aliases);
   if (fromMap) return fromMap;
   return extractValueByAliases(sectionText, aliases, allAliases);
+}
+
+function extractLooseBetween(text, starts, ends, maxLen = 140) {
+  const startPat = starts.map(looseLabelPattern).join("|");
+  const endPat = ends.length ? ends.map(looseLabelPattern).join("|") : "";
+  const re = new RegExp(
+    `(?:${startPat})\\s*[:：]?\\s*([\\s\\S]{1,${maxLen}}?)` +
+      (endPat ? `(?=(?:${endPat})|\\n{2,}|$)` : `(?=\\n{2,}|$)`),
+    "i"
+  );
+  const m = String(text || "").match(re);
+  if (!m) return "";
+  return String(m[1] || "")
+    .replace(/^[\s:：\-·•()]+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function stripXmlToText(xml) {
@@ -213,6 +237,7 @@ function extractPatternFallbacks(text) {
 
 function applyPatternFallbacks(data, text) {
   const f = extractPatternFallbacks(text);
+  const src = String(text || "");
 
   if (!data.complainant["주민등록번호"] && f.rrn) data.complainant["주민등록번호"] = f.rrn;
   if (!data.complainant["전자우편주소"] && f.email) data.complainant["전자우편주소"] = f.email;
@@ -228,11 +253,61 @@ function applyPatternFallbacks(data, text) {
   const claim = data.claimDetails;
   if (!claim.joinDate && f.dates[0]) claim.joinDate = f.dates[0];
   if (!claim.leaveDate && f.dates[1]) claim.leaveDate = f.dates[1];
-  if (!claim.unpaidWageTotal && f.bigNumbers[0]) claim.unpaidWageTotal = f.bigNumbers[0];
-  if (!claim.unpaidRetirementTotal && f.bigNumbers[1]) claim.unpaidRetirementTotal = f.bigNumbers[1];
-  if (!claim.otherUnpaidTotal && f.bigNumbers[2]) claim.otherUnpaidTotal = f.bigNumbers[2];
+  const amountCandidates = f.bigNumbers.filter((n) => {
+    const only = String(n).replace(/\D/g, "");
+    return only.length >= 8;
+  });
+  if (!claim.unpaidWageTotal && amountCandidates[0]) claim.unpaidWageTotal = amountCandidates[0];
+  if (!claim.unpaidRetirementTotal && amountCandidates[1]) claim.unpaidRetirementTotal = amountCandidates[1];
+  if (!claim.otherUnpaidTotal && amountCandidates[2]) claim.otherUnpaidTotal = amountCandidates[2];
   if (!claim.detailContent && lines.length) {
     claim.detailContent = lines.slice(0, 6).join(" ").slice(0, 300);
+  }
+
+  if (!data.complainant["성명"]) {
+    data.complainant["성명"] =
+      extractLooseBetween(src, ["성명", "성 명"], ["주민등록번호"], 50) ||
+      "";
+  }
+  if (!data.complainant["주소"]) {
+    data.complainant["주소"] =
+      extractLooseBetween(src, ["주소", "주 소"], ["전화번호", "전 화 번 호", "휴대전화번호", "전자우편주소"], 120) ||
+      "";
+  }
+
+  if (!data.respondent["성명"]) {
+    data.respondent["성명"] =
+      extractLooseBetween(src, ["피진정인 성명", "피진정인 성 명", "성명", "성 명"], ["연락처", "연 락 처"], 50) ||
+      "";
+  }
+  if (!data.respondent["주소"]) {
+    data.respondent["주소"] =
+      extractLooseBetween(src, ["피진정인 주소", "주소", "주 소"], ["사업체구분", "사업장명", "사 업 장 명"], 120) ||
+      "";
+  }
+  if (!data.respondent["사업장명"]) {
+    data.respondent["사업장명"] =
+      extractLooseBetween(src, ["사업장명", "사 업 장 명"], ["사업장주소", "사업장 주소", "사업장전화번호"], 100) ||
+      "";
+  }
+  if (!data.respondent["사업장 주소"]) {
+    data.respondent["사업장 주소"] =
+      extractLooseBetween(src, ["사업장주소", "사업장 주소"], ["사업장전화번호", "근로자수"], 120) ||
+      "";
+  }
+  if (!data.respondent["근로자 수"]) {
+    data.respondent["근로자 수"] =
+      extractLooseBetween(src, ["근로자수", "근로자 수"], ["진정 내용", "입사일"], 20) ||
+      ((src.match(/(\d{1,3}(?:,\d{3})*|\d+)\s*명/) || [])[0] || "");
+  }
+
+  if (!claim.jobDescription) {
+    claim.jobDescription =
+      extractLooseBetween(src, ["업무내용", "업 무 내 용"], ["임금지급일", "근로계약방법", "내용"], 140) || "";
+  }
+  if (!claim.payday) {
+    claim.payday =
+      extractLooseBetween(src, ["임금지급일", "임금 지급일"], ["근로계약방법", "내용", "파일첨부"], 60) || "";
   }
 }
 
