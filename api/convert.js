@@ -1,7 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const formidable = require("formidable");
+const { formidable } = require("formidable");
 const { convertFile } = require("../src/converter");
 
 module.exports = async function handler(req, res) {

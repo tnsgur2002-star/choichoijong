@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const CFB = require("cfb");
 const XLSX = require("xlsx");
-const pdfParse = require("pdf-parse");
 const AdmZip = require("adm-zip");
 
 const COMPLAINANT_FIELDS = [
@@ -116,8 +115,14 @@ function parseHwpxText(filePath) {
 
 async function parsePdfText(filePath) {
   const raw = fs.readFileSync(filePath);
-  const parsed = await pdfParse(raw);
-  return String(parsed.text || "");
+  const { PDFParse } = require("pdf-parse");
+  const parser = new PDFParse({ data: raw });
+  try {
+    const result = await parser.getText();
+    return String(result?.text || "");
+  } finally {
+    await parser.destroy();
+  }
 }
 
 function cleanText(text) {
