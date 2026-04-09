@@ -59,6 +59,53 @@ function parseBracketPairs(text) {
   return result;
 }
 
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function compactText(text) {
+  return String(text || "")
+    .replace(/\r/g, "\n")
+    .replace(/\t/g, " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ ]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractValueByAliases(text, aliases, allAliases) {
+  const source = compactText(text);
+  if (!source) return "";
+
+  const stopPattern = allAliases
+    .map((x) => escapeRegExp(x))
+    .sort((a, b) => b.length - a.length)
+    .join("|");
+
+  for (const alias of aliases) {
+    const aliasEsc = escapeRegExp(alias);
+    const re = new RegExp(
+      `${aliasEsc}\\s*[:：]?\\s*([\\s\\S]{0,120}?)(?=\\s*(?:${stopPattern})\\s*[:：]?|\\n{2,}|$)`,
+      "i"
+    );
+    const m = source.match(re);
+    if (!m) continue;
+    const value = String(m[1] || "")
+      .replace(/^[\s:：\-·•]+/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function getFieldWithFallback(sectionMap, aliases, sectionText, allAliases) {
+  const fromMap = getField(sectionMap, aliases);
+  if (fromMap) return fromMap;
+  return extractValueByAliases(sectionText, aliases, allAliases);
+}
+
 function stripXmlToText(xml) {
   return xml
     .replace(/<w:br[^>]*\/>/gi, "\n")
@@ -143,6 +190,52 @@ function buildClaimSummary(details) {
   ].join("\n");
 }
 
+function extractPatternFallbacks(text) {
+  const src = compactText(text);
+
+  const rrn = (src.match(/\b\d{6}-\d{7}\b/) || [])[0] || "";
+  const email = (src.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i) || [])[0] || "";
+  const phones = src.match(/\b0\d{1,2}-\d{3,4}-\d{4}\b/g) || [];
+  const mobile = phones.find((p) => /^01\d-/.test(p)) || "";
+  const landlines = phones.filter((p) => !/^01\d-/.test(p));
+  const dates = src.match(/\b\d{4}[.\-\/]\s*\d{1,2}[.\-\/]\s*\d{1,2}\.?\b/g) || [];
+  const bigNumbers = src.match(/\b\d{5,}\b/g) || [];
+
+  return {
+    rrn,
+    email,
+    mobile,
+    landlines,
+    dates,
+    bigNumbers,
+  };
+}
+
+function applyPatternFallbacks(data, text) {
+  const f = extractPatternFallbacks(text);
+
+  if (!data.complainant["주민등록번호"] && f.rrn) data.complainant["주민등록번호"] = f.rrn;
+  if (!data.complainant["전자우편주소"] && f.email) data.complainant["전자우편주소"] = f.email;
+  if (!data.complainant["휴대전화번호"] && f.mobile) data.complainant["휴대전화번호"] = f.mobile;
+  if (!data.complainant["전화번호"] && f.landlines[0]) data.complainant["전화번호"] = f.landlines[0];
+
+  if (!data.respondent["연락처"] && f.landlines[1]) data.respondent["연락처"] = f.landlines[1];
+  if (!data.respondent["사업장전화번호"]) {
+    data.respondent["사업장전화번호"] = f.landlines[2] || f.landlines[1] || "";
+  }
+
+  const lines = String(text || "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  const claim = data.claimDetails;
+  if (!claim.joinDate && f.dates[0]) claim.joinDate = f.dates[0];
+  if (!claim.leaveDate && f.dates[1]) claim.leaveDate = f.dates[1];
+  if (!claim.unpaidWageTotal && f.bigNumbers[0]) claim.unpaidWageTotal = f.bigNumbers[0];
+  if (!claim.unpaidRetirementTotal && f.bigNumbers[1]) claim.unpaidRetirementTotal = f.bigNumbers[1];
+  if (!claim.otherUnpaidTotal && f.bigNumbers[2]) claim.otherUnpaidTotal = f.bigNumbers[2];
+  if (!claim.detailContent && lines.length) {
+    claim.detailContent = lines.slice(0, 6).join(" ").slice(0, 300);
+  }
+}
+
 function extractStructuredData(fullText) {
   const text = cleanText(fullText);
   const complainantSection = sectionRange(text, /1\.\s*진정인/, /2\.\s*피진정인/);
@@ -153,44 +246,74 @@ function extractStructuredData(fullText) {
   const respondentMap = parseBracketPairs(respondentSection);
   const claimMap = parseBracketPairs(claimSection);
 
+  const complainantAliases = [
+    "성명", "성 명", "주민등록번호", "주소", "주 소", "전화번호", "전 화 번 호", "휴대전화번호", "전자우편주소",
+  ];
+  const respondentAliases = [
+    "성명", "성 명", "연락처", "연 락 처", "주소", "주 소", "사업장명", "사 업 장 명",
+    "사업장 주소", "사업장 주소 (실근무장소)", "사업장전화번호", "근로자 수",
+  ];
+  const claimAliases = [
+    "입사일", "입 사 일", "퇴사일", "퇴 사 일", "체불임금총액", "체불퇴직금총액", "체불퇴직금액",
+    "기타체불금액", "업무내용", "업 무 내 용", "임금지급일", "임금 지급일", "내용", "내 용",
+  ];
+
+  const complainantText = complainantSection || text;
+  const respondentText = respondentSection || text;
+  const claimText = claimSection || text;
+
   const complainant = {
-    성명: getField(complainantMap, ["성명", "성 명"]),
-    주민등록번호: getField(complainantMap, ["주민등록번호"]),
-    주소: getField(complainantMap, ["주소", "주 소"]),
-    전화번호: getField(complainantMap, ["전화번호", "전 화 번 호"]),
-    휴대전화번호: getField(complainantMap, ["휴대전화번호"]),
-    전자우편주소: getField(complainantMap, ["전자우편주소"]),
+    성명: getFieldWithFallback(complainantMap, ["성명", "성 명"], complainantText, complainantAliases),
+    주민등록번호: getFieldWithFallback(complainantMap, ["주민등록번호"], complainantText, complainantAliases),
+    주소: getFieldWithFallback(complainantMap, ["주소", "주 소"], complainantText, complainantAliases),
+    전화번호: getFieldWithFallback(complainantMap, ["전화번호", "전 화 번 호"], complainantText, complainantAliases),
+    휴대전화번호: getFieldWithFallback(complainantMap, ["휴대전화번호"], complainantText, complainantAliases),
+    전자우편주소: getFieldWithFallback(complainantMap, ["전자우편주소"], complainantText, complainantAliases),
   };
 
   const respondent = {
-    성명: getField(respondentMap, ["성명", "성 명"]),
-    연락처: getField(respondentMap, ["연락처", "연 락 처"]),
-    주소: getField(respondentMap, ["주소", "주 소"]),
-    사업장명: getField(respondentMap, ["사업장명", "사 업 장 명"]),
-    "사업장 주소": getField(respondentMap, ["사업장 주소", "사업장 주소 (실근무장소)"]),
-    사업장전화번호: getField(respondentMap, ["사업장전화번호"]),
-    "근로자 수": getField(respondentMap, ["근로자 수"]),
+    성명: getFieldWithFallback(respondentMap, ["성명", "성 명"], respondentText, respondentAliases),
+    연락처: getFieldWithFallback(respondentMap, ["연락처", "연 락 처"], respondentText, respondentAliases),
+    주소: getFieldWithFallback(respondentMap, ["주소", "주 소"], respondentText, respondentAliases),
+    사업장명: getFieldWithFallback(respondentMap, ["사업장명", "사 업 장 명"], respondentText, respondentAliases),
+    "사업장 주소": getFieldWithFallback(
+      respondentMap,
+      ["사업장 주소", "사업장 주소 (실근무장소)"],
+      respondentText,
+      respondentAliases
+    ),
+    사업장전화번호: getFieldWithFallback(respondentMap, ["사업장전화번호"], respondentText, respondentAliases),
+    "근로자 수": getFieldWithFallback(respondentMap, ["근로자 수"], respondentText, respondentAliases),
   };
 
   const claimDetails = {
-    joinDate: getField(claimMap, ["입사일", "입 사 일"]),
-    leaveDate: getField(claimMap, ["퇴사일", "퇴 사 일"]),
-    unpaidWageTotal: getField(claimMap, ["체불임금총액"]),
-    unpaidRetirementTotal: getField(claimMap, ["체불퇴직금총액", "체불퇴직금액"]),
-    otherUnpaidTotal: getField(claimMap, ["기타체불금액"]),
-    jobDescription: getField(claimMap, ["업무내용", "업 무 내 용"]),
-    payday: getField(claimMap, ["임금지급일", "임금 지급일"]),
-    detailContent: getField(claimMap, ["내용", "내 용"]),
+    joinDate: getFieldWithFallback(claimMap, ["입사일", "입 사 일"], claimText, claimAliases),
+    leaveDate: getFieldWithFallback(claimMap, ["퇴사일", "퇴 사 일"], claimText, claimAliases),
+    unpaidWageTotal: getFieldWithFallback(claimMap, ["체불임금총액"], claimText, claimAliases),
+    unpaidRetirementTotal: getFieldWithFallback(
+      claimMap,
+      ["체불퇴직금총액", "체불퇴직금액"],
+      claimText,
+      claimAliases
+    ),
+    otherUnpaidTotal: getFieldWithFallback(claimMap, ["기타체불금액"], claimText, claimAliases),
+    jobDescription: getFieldWithFallback(claimMap, ["업무내용", "업 무 내 용"], claimText, claimAliases),
+    payday: getFieldWithFallback(claimMap, ["임금지급일", "임금 지급일"], claimText, claimAliases),
+    detailContent: getFieldWithFallback(claimMap, ["내용", "내 용"], claimText, claimAliases),
   };
 
-  const claimSummary = buildClaimSummary(claimDetails);
-
-  return {
+  const result = {
     complainant,
     respondent,
-    claimSummary,
+    claimDetails,
+    claimSummary: "",
     rawText: text,
   };
+
+  applyPatternFallbacks(result, text);
+  result.claimSummary = buildClaimSummary(result.claimDetails);
+
+  return result;
 }
 
 function writeWorkbook(outPath, data) {
